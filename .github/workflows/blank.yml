@@ -8,8 +8,8 @@ on:
 
 env:
   REPO_URL: "https://github.com/gffice/a-git.git"
-  APP_NAME: "app"
-  DOCKER_IMAGE_NAME: "my-rust-app"
+  APP_NAME: "arti"
+  DOCKER_IMAGE_NAME: "arti-docker"
   BUILD_DIR: "/home/runner/source"
   BIN_DIR: "/home/runner/bin"
 
