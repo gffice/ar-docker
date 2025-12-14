@@ -8,10 +8,10 @@ on:
 
 env:
   REPO_URL: "https://github.com/gffice/a-git.git"
-  APP_NAME: "arti"  # 假设构建出的二进制名为 app
-  DOCKER_IMAGE_NAME: "arti-docker"
-  BUILD_DIR: "~/source"
-  BIN_DIR: "~/bin"
+  APP_NAME: "app"
+  DOCKER_IMAGE_NAME: "my-rust-app"
+  BUILD_DIR: "/home/runner/source"
+  BIN_DIR: "/home/runner/bin"
 
 jobs:
   build-and-release:
@@ -34,40 +34,48 @@ jobs:
     - name: Clone Rust repository and build
       run: |
         # 克隆目标仓库
-        mkdir -p $HOME/source
-        git clone ${{ env.REPO_URL }} $HOME/source
+        mkdir -p ${{ env.BUILD_DIR }}
+        git clone ${{ env.REPO_URL }} ${{ env.BUILD_DIR }}
         
         # 创建输出目录
-        mkdir -p $HOME/bin
+        mkdir -p ${{ env.BIN_DIR }}
         
         # 使用Docker构建Rust应用
         docker run --rm \
-          -v $HOME/source:/source \
-          -v $HOME/bin:/output \
+          -v ${{ env.BUILD_DIR }}:/source \
+          -v ${{ env.BIN_DIR }}:/output \
           -w /source \
           rust:latest \
           bash -c "
             cargo build --release && \
-            cp target/release/${{ env.APP_NAME }} /output/
+            find target/release -maxdepth 1 -type f -executable -exec cp {} /output/${{ env.APP_NAME }} \; && \
+            echo 'Build completed' && \
+            ls -la /output/
           "
         
         # 检查构建是否成功
-        if [ -f "$HOME/bin/${{ env.APP_NAME }}" ]; then
+        if [ -f "${{ env.BIN_DIR }}/${{ env.APP_NAME }}" ]; then
           echo "Build successful!"
-          ls -la $HOME/bin/
+          ls -la ${{ env.BIN_DIR }}/
         else
-          echo "Build failed!"
+          echo "Build failed! Checking target directory..."
+          find ${{ env.BUILD_DIR }}/target/release -type f -executable | head -10
           exit 1
         fi
     
-    - name: Create Dockerfile
+    - name: Prepare Docker build context
       run: |
-        cat > Dockerfile << EOF
+        # 创建专门的Docker构建目录
+        mkdir -p docker-build
+        cp ${{ env.BIN_DIR }}/${{ env.APP_NAME }} docker-build/
+        
+        # 创建Dockerfile
+        cat > docker-build/Dockerfile << EOF
         FROM debian:bookworm-slim
         
         # 安装必要的运行时依赖
-        RUN apt-get update && apt-get install -y \
-            ca-certificates \
+        RUN apt-get update && apt-get install -y \\
+            ca-certificates \\
             && rm -rf /var/lib/apt/lists/*
         
         # 将二进制文件复制到容器中
@@ -83,21 +91,26 @@ jobs:
         # EXPOSE 8080
         
         # 设置健康检查（可选）
-        # HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+        # HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \\
         #   CMD curl -f http://localhost:8080/health || exit 1
         EOF
         
-        # 将Dockerfile移动到合适的位置
-        cp Dockerfile $HOME/
+        # 查看构建上下文内容
+        echo "Docker build context contents:"
+        ls -la docker-build/
     
     - name: Build Docker image
       run: |
-        cd $HOME
+        cd docker-build
+        
         # 构建Docker镜像
         docker build \
           --tag ghcr.io/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:latest \
           --tag ghcr.io/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.ref_name }} \
           .
+        
+        # 查看构建的镜像
+        docker images | grep ${{ env.DOCKER_IMAGE_NAME }}
     
     - name: Save Docker image as tar.xz
       run: |
