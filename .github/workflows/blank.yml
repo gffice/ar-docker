@@ -1,0 +1,133 @@
+name: Build Rust Application and Create Docker Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送版本标签时触发
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  REPO_URL: "https://github.com/gffice/a-git.git"
+  APP_NAME: "arti"  # 假设构建出的二进制名为 app
+  DOCKER_IMAGE_NAME: "arti-docker"
+  BUILD_DIR: "~/source"
+  BIN_DIR: "~/bin"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout current repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Clone Rust repository and build
+      run: |
+        # 克隆目标仓库
+        mkdir -p $HOME/source
+        git clone ${{ env.REPO_URL }} $HOME/source
+        
+        # 创建输出目录
+        mkdir -p $HOME/bin
+        
+        # 使用Docker构建Rust应用
+        docker run --rm \
+          -v $HOME/source:/source \
+          -v $HOME/bin:/output \
+          -w /source \
+          rust:latest \
+          bash -c "
+            cargo build --release && \
+            cp target/release/${{ env.APP_NAME }} /output/
+          "
+        
+        # 检查构建是否成功
+        if [ -f "$HOME/bin/${{ env.APP_NAME }}" ]; then
+          echo "Build successful!"
+          ls -la $HOME/bin/
+        else
+          echo "Build failed!"
+          exit 1
+        fi
+    
+    - name: Create Dockerfile
+      run: |
+        cat > Dockerfile << EOF
+        FROM debian:bookworm-slim
+        
+        # 安装必要的运行时依赖
+        RUN apt-get update && apt-get install -y \
+            ca-certificates \
+            && rm -rf /var/lib/apt/lists/*
+        
+        # 将二进制文件复制到容器中
+        COPY ${{ env.APP_NAME }} /bin/
+        
+        # 设置可执行权限
+        RUN chmod +x /bin/${{ env.APP_NAME }}
+        
+        # 设置启动命令
+        ENTRYPOINT ["/bin/${{ env.APP_NAME }}", "--run", "--server"]
+        
+        # 暴露端口（如果需要）
+        # EXPOSE 8080
+        
+        # 设置健康检查（可选）
+        # HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+        #   CMD curl -f http://localhost:8080/health || exit 1
+        EOF
+        
+        # 将Dockerfile移动到合适的位置
+        cp Dockerfile $HOME/
+    
+    - name: Build Docker image
+      run: |
+        cd $HOME
+        # 构建Docker镜像
+        docker build \
+          --tag ghcr.io/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:latest \
+          --tag ghcr.io/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.ref_name }} \
+          .
+    
+    - name: Save Docker image as tar.xz
+      run: |
+        # 保存镜像为tar文件
+        docker save ghcr.io/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:latest \
+          | xz -z -9 -T0 > ${{ env.DOCKER_IMAGE_NAME }}.tar.xz
+        
+        # 检查文件大小
+        ls -lh ${{ env.DOCKER_IMAGE_NAME }}.tar.xz
+    
+    - name: Push Docker image to GitHub Container Registry
+      run: |
+        docker push ghcr.io/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+        docker push ghcr.io/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.ref_name }}
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        name: Release ${{ github.ref_name }}
+        files: |
+          ${{ env.DOCKER_IMAGE_NAME }}.tar.xz
+        generate_release_notes: true
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload Docker image as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-image
+        path: ${{ env.DOCKER_IMAGE_NAME }}.tar.xz
+        retention-days: 7
