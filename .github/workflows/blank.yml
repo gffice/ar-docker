@@ -20,7 +20,7 @@ jobs:
     steps:
     - name: Checkout current repository
       uses: actions/checkout@v4
-      
+    - uses: actions/setup-go@v5.5.0
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
@@ -62,13 +62,56 @@ jobs:
           find ${{ env.BUILD_DIR }}/target/release -type f -executable | head -10
           exit 1
         fi
-    
+    - name: 镜像仓库
+      run: |
+        sudo chmod -R 777 /mnt
+        echo ----------------
+        git clone https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/lyrebird.git
+        git clone https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/webtunnel.git
+        git clone https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake.git
+        git clone https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/conjure.git
+        echo ----------------
+        df -h
+    - name: Building lyrebird
+      run: |
+          cd lyrebird
+          make build
+    - name: Building webtunnel
+      run: |
+          cd webtunnel
+          cd main/client
+          go get
+          go build
+          cd ../server
+          go get
+          go build
+    - name: Building snowflake
+      run: |
+          cd snowflake
+          cd client
+          go get
+          go build
+    - name: Building conjure
+      run: |
+          cd conjure
+          cd client
+          go get
+          go build
+    - name: copy
+      run: |
+          cp ./lyrebird/lyrebird ~/bin/lyrebird
+          cp ./webtunnel/main/client/client ~/bin/webtunnel
+          cp ./snowflake/client/client ~/bin/snowflake
+          cp ./conjure/client/client ~/bin/conjure
     - name: Prepare Docker build context
       run: |
         # 创建专门的Docker构建目录
         mkdir -p docker-build
         cp ${{ env.BIN_DIR }}/${{ env.APP_NAME }} docker-build/
-        
+        cp ${{ env.BIN_DIR }}/lyrebird docker-build/
+        cp ${{ env.BIN_DIR }}/webtunnel docker-build/
+        cp ${{ env.BIN_DIR }}/snowflake docker-build/
+        cp ${{ env.BIN_DIR }}/conjure docker-build/
         # 创建Dockerfile
         cat > docker-build/Dockerfile << EOF
         FROM debian:bookworm-slim
@@ -80,10 +123,16 @@ jobs:
         
         # 将二进制文件复制到容器中
         COPY ${{ env.APP_NAME }} /bin/
-        
+        COPY lyrebird /bin/
+        COPY webtunnel /bin/
+        COPY snowflake /bin/
+        COPY conjure /bin/
         # 设置可执行权限
         RUN chmod +x /bin/${{ env.APP_NAME }}
-        
+        RUN chmod +x /bin/lyrebird
+        RUN chmod +x /bin/webtunnel
+        RUN chmod +x /bin/snowflake
+        RUN chmod +x /bin/conjure
         # 设置启动命令
         ENTRYPOINT ["/bin/${{ env.APP_NAME }}", "--run", "--server"]
         
