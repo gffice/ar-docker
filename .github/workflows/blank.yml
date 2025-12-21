@@ -134,7 +134,7 @@ jobs:
         RUN chmod +x /bin/snowflake
         RUN chmod +x /bin/conjure
         # 设置启动命令
-        ENTRYPOINT ["/bin/${{ env.APP_NAME }}", "proxy", "--config /arti-data/arti.toml"]
+        ENTRYPOINT ["/bin/${{ env.APP_NAME }}", "proxy", "--config", "/arti-data/arti.toml"]
         
         # 暴露端口（如果需要）
         # EXPOSE 8080
@@ -312,7 +312,7 @@ jobs:
         RUN chmod +x /bin/snowflake
         RUN chmod +x /bin/conjure
         # 设置启动命令
-        ENTRYPOINT ["/bin/${{ env.APP_NAME }}", "proxy", "--config /arti-data/arti.toml"]
+        ENTRYPOINT ["/bin/${{ env.APP_NAME }}", "proxy", "--config", "/arti-data/arti.toml"]
         
         # 暴露端口（如果需要）
         # EXPOSE 8080
