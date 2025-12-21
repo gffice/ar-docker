@@ -45,8 +45,17 @@ jobs:
           -v ${{ env.BUILD_DIR }}:/source \
           -v ${{ env.BIN_DIR }}:/output \
           -w /source \
-          rust:latest \
+          -e PATH="/root/.cargo/bin:${PATH}" \
+          debian:latest \
           bash -c "
+            apt update -y && \
+            apt install -y --no-install-recommends \
+            build-essential \
+            curl \
+            git \
+            libssl-dev \
+            && rm -rf /var/lib/apt/lists/* && \
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
             cargo build --release && \
             find target/release -maxdepth 1 -type f -executable -exec cp {} /output/${{ env.APP_NAME }} \; && \
             echo 'Build completed' && \
@@ -223,8 +232,17 @@ jobs:
           -v ${{ env.BUILD_DIR }}:/source \
           -v ${{ env.BIN_DIR }}:/output \
           -w /source \
-          rust:latest \
+          -e PATH="/root/.cargo/bin:${PATH}" \
+          debian:latest \
           bash -c "
+            apt update -y && \
+            apt install -y --no-install-recommends \
+            build-essential \
+            curl \
+            git \
+            libssl-dev \
+            && rm -rf /var/lib/apt/lists/* && \
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
             cargo build --release && \
             find target/release -maxdepth 1 -type f -executable -exec cp {} /output/${{ env.APP_NAME }} \; && \
             echo 'Build completed' && \
