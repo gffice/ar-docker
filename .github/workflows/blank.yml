@@ -7,7 +7,7 @@ on:
   workflow_dispatch:  # 允许手动触发
 
 env:
-  REPO_URL: "https://github.com/gffice/a-git.git"
+  REPO_URL: "https://gitlab.torproject.org/tpo/core/arti"
   APP_NAME: "arti"
   DOCKER_IMAGE_NAME: "arti-docker"
   BUILD_DIR: "/home/runner/source"
