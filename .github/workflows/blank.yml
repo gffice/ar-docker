@@ -129,9 +129,7 @@ jobs:
         FROM debian:bookworm-slim
         
         # 安装必要的运行时依赖
-        RUN apt-get update && apt-get install -y \\
-            ca-certificates \\
-            && rm -rf /var/lib/apt/lists/*
+        RUN apt update -y && apt install -y --no-install-recommends build-essential curl git libssl-dev ca-certificates pkg-config libsqlite3-dev && rm -rf /var/lib/apt/lists/*
         
         # 将二进制文件复制到容器中
         COPY ${{ env.APP_NAME }} /bin/
@@ -319,10 +317,7 @@ jobs:
         FROM debian:bookworm-slim
         
         # 安装必要的运行时依赖
-        RUN apt-get update && apt-get install -y \\
-            ca-certificates \\
-            && rm -rf /var/lib/apt/lists/*
-        
+        RUN apt update -y && apt install -y --no-install-recommends build-essential curl git libssl-dev ca-certificates pkg-config libsqlite3-dev && rm -rf /var/lib/apt/lists/*
         # 将二进制文件复制到容器中
         COPY ${{ env.APP_NAME }} /bin/
         COPY lyrebird /bin/
