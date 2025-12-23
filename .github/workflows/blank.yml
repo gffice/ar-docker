@@ -126,7 +126,7 @@ jobs:
         cp ${{ env.BIN_DIR }}/conjure docker-build/
         # 创建Dockerfile
         cat > docker-build/Dockerfile << EOF
-        FROM debian:bookworm-slim
+        FROM debian:latest
         
         # 安装必要的运行时依赖
         RUN apt update -y && apt install -y --no-install-recommends build-essential curl git libssl-dev ca-certificates pkg-config libsqlite3-dev && rm -rf /var/lib/apt/lists/*
@@ -314,7 +314,7 @@ jobs:
         cp ${{ env.BIN_DIR }}/conjure docker-build/
         # 创建Dockerfile
         cat > docker-build/Dockerfile << EOF
-        FROM debian:bookworm-slim
+        FROM debian:latest
         
         # 安装必要的运行时依赖
         RUN apt update -y && apt install -y --no-install-recommends build-essential curl git libssl-dev ca-certificates pkg-config libsqlite3-dev && rm -rf /var/lib/apt/lists/*
