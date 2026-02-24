@@ -1,0 +1,33 @@
+[application]
+allow_running_as_root= true
+[proxy]
+socks_listen = 9055
+[storage]
+cache_dir = "/arti-data/cache_dir"
+state_dir = "/arti-data/state_dir"
+[bridges]
+enabled = true
+bridges = '''
+
+'''
+[[bridges.transports]]
+protocols = ["obfs4"]
+path = "/bin/lyrebird"
+arguments = []
+run_on_startup = false
+[[bridges.transports]]
+protocols = ["webtunnel"]
+path = "/bin/webtunnel"
+arguments = []
+run_on_startup = false
+[[bridges.transports]]
+protocols = ["snowflake"]
+path = "/bin/snowflake"
+arguments = []
+run_on_startup = false
+[[bridges.transports]]
+protocols = ["conjure"]
+path = "/bin/conjure"
+arguments = []
+run_on_startup = false
+
